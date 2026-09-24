@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Shield, Lock, Mail, Key, ArrowRight, AlertCircle, RefreshCw } from 'lucide-react';
+import { Lock, Mail, Key, ArrowRight, AlertCircle, RefreshCw } from 'lucide-react';
 import useAuth from '../hooks/useAuth';
 
 export default function LoginPage() {
@@ -48,7 +48,7 @@ export default function LoginPage() {
               Unlock Secure Vault
             </h1>
             <p className="text-xs text-slate-400 mt-1 font-mono">
-              HTTP-Only Cookie Authentication Session
+              Firebase Auth & HTTP-Only Cookie Session
             </p>
           </div>
 
@@ -104,7 +104,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={submitting}
-              className="w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-vault-cyan to-vault-indigo text-slate-950 font-bold text-sm shadow-glow-cyan hover:brightness-110 transition-all flex items-center justify-center gap-2 group disabled:opacity-50"
+              className="w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-vault-cyan to-vault-indigo text-slate-950 font-bold text-sm shadow-glow-cyan hover:brightness-110 transition-all flex items-center justify-center gap-2 group disabled:opacity-50 font-mono"
             >
               {submitting ? (
                 <span className="flex items-center gap-2">

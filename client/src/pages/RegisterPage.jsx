@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Shield, Key, Mail, ArrowRight, CheckCircle2, AlertCircle, RefreshCw } from 'lucide-react';
+import { Key, Mail, ArrowRight, CheckCircle2, AlertCircle, RefreshCw } from 'lucide-react';
 import useAuth from '../hooks/useAuth';
 
 export default function RegisterPage() {
@@ -10,7 +10,7 @@ export default function RegisterPage() {
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
-  const { register } = useAuth();
+  const { initiateRegistration } = useAuth();
   const navigate = useNavigate();
 
   const validate = () => {
@@ -42,8 +42,9 @@ export default function RegisterPage() {
     setError('');
 
     try {
-      await register(email, password);
-      navigate('/dashboard');
+      await initiateRegistration(email, password);
+      // Navigate to Firebase Email Verification Page
+      navigate('/verify-email', { state: { email, password } });
     } catch (err) {
       setError(err.message || 'Registration failed. Please try again.');
     } finally {
@@ -66,7 +67,7 @@ export default function RegisterPage() {
               Create Vault Identity
             </h1>
             <p className="text-xs text-slate-400 mt-1 font-mono">
-              Secure MongoDB & JWT Cookie Authentication
+              Firebase Email Verification & HTTP-Only Cookie Session
             </p>
           </div>
 
@@ -138,26 +139,26 @@ export default function RegisterPage() {
             <div className="p-3 rounded-lg bg-vault-bg border border-slate-800 text-[11px] text-slate-400 space-y-1 font-mono">
               <div className="flex items-center gap-1.5 text-vault-emerald">
                 <CheckCircle2 className="w-3.5 h-3.5" />
-                Bcrypt Password Hashing & HTTP-Only Cookies
+                Firebase Verification & Bcrypt Hashing
               </div>
               <p className="text-slate-500">
-                Passwords are hashed server-side with bcrypt. JWT tokens are stored exclusively in HTTP-only cookies.
+                A verification link will be sent to your email. Click "Account Verified" after verifying.
               </p>
             </div>
 
             <button
               type="submit"
               disabled={submitting}
-              className="w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-vault-emerald to-teal-500 text-slate-950 font-bold text-sm shadow-glow-emerald hover:brightness-110 transition-all flex items-center justify-center gap-2 group mt-2 disabled:opacity-50"
+              className="w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-vault-emerald to-teal-500 text-slate-950 font-bold text-sm shadow-glow-emerald hover:brightness-110 transition-all flex items-center justify-center gap-2 group mt-2 disabled:opacity-50 font-mono"
             >
               {submitting ? (
                 <span className="flex items-center gap-2">
                   <RefreshCw className="w-4 h-4 animate-spin" />
-                  Creating Identity...
+                  Sending Verification Link...
                 </span>
               ) : (
                 <>
-                  <span>Create Vault Security Profile</span>
+                  <span>Register & Verify Email</span>
                   <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                 </>
               )}
