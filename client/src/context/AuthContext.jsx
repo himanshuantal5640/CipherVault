@@ -57,18 +57,42 @@ export const AuthProvider = ({ children }) => {
   };
 
   /**
-   * Step 1 of Registration: Create Firebase User & Send Verification Email
+   * Step 1 of Registration: Create/Authenticate Firebase User & Send Verification Email
    */
   const initiateRegistration = async (email, password) => {
     setLoading(true);
     try {
       let fbUser = null;
+
       try {
         const creds = await createUserWithEmailAndPassword(auth, email, password);
         fbUser = creds.user;
-        await sendEmailVerification(fbUser);
       } catch (fbErr) {
-        console.info('[VaultX Auth] Firebase user creation info:', fbErr.message);
+        if (fbErr.code === 'auth/email-already-in-use') {
+          // User already exists in Firebase, sign in to activate session and send verification email
+          try {
+            const loginCreds = await signInWithEmailAndPassword(auth, email, password);
+            fbUser = loginCreds.user;
+          } catch (loginErr) {
+            console.warn('[VaultX Auth] Existing Firebase user sign-in warning:', loginErr.message);
+          }
+        } else {
+          console.warn('[VaultX Auth] Firebase user creation info:', fbErr.message);
+        }
+      }
+
+      // Send Firebase Email Verification if Firebase user is authenticated
+      const targetUser = fbUser || auth.currentUser;
+      if (targetUser) {
+        try {
+          await sendEmailVerification(targetUser);
+        } catch (mailErr) {
+          if (mailErr.code === 'auth/too-many-requests') {
+            console.info('[VaultX Auth] Verification email was recently sent; rate limited by Firebase.');
+          } else {
+            console.warn('[VaultX Auth] Email verification send warning:', mailErr.message);
+          }
+        }
       }
 
       setPendingRegistration({ email, password });
@@ -91,12 +115,21 @@ export const AuthProvider = ({ children }) => {
 
     setLoading(true);
     try {
-      // Check Firebase currentUser email verification status if Firebase is active
-      const currentUser = auth.currentUser;
+      // Ensure Firebase user session is active
+      let currentUser = auth.currentUser;
+      if (!currentUser && emailToUse && passToUse) {
+        try {
+          const creds = await signInWithEmailAndPassword(auth, emailToUse, passToUse);
+          currentUser = creds.user;
+        } catch (err) {
+          // Non-blocking fallback
+        }
+      }
+
       if (currentUser) {
         await currentUser.reload();
         if (!currentUser.emailVerified) {
-          throw new Error('Email not verified yet. Please check your email inbox and click the verification link first.');
+          throw new Error(`Email not verified yet. Please check your email inbox at ${emailToUse} and click the verification link sent by Firebase.`);
         }
       }
 
@@ -105,7 +138,7 @@ export const AuthProvider = ({ children }) => {
       try {
         response = await authService.register(emailToUse, passToUse);
       } catch (regErr) {
-        // If user record already created, log in
+        // If user record already exists in MongoDB, log in to issue HTTP-only cookie
         response = await authService.login(emailToUse, passToUse);
       }
 
@@ -122,11 +155,30 @@ export const AuthProvider = ({ children }) => {
   /**
    * Resend Firebase verification email
    */
-  const resendVerificationEmail = async () => {
-    const currentUser = auth.currentUser;
+  const resendVerificationEmail = async (overrideEmail, overridePassword) => {
+    const emailToUse = overrideEmail || pendingRegistration?.email;
+    const passToUse = overridePassword || pendingRegistration?.password;
+
+    let currentUser = auth.currentUser;
+    if (!currentUser && emailToUse && passToUse) {
+      try {
+        const creds = await signInWithEmailAndPassword(auth, emailToUse, passToUse);
+        currentUser = creds.user;
+      } catch (err) {
+        throw new Error('Unable to authenticate with Firebase to send verification email. Please log in.');
+      }
+    }
+
     if (currentUser) {
-      await sendEmailVerification(currentUser);
-      return true;
+      try {
+        await sendEmailVerification(currentUser);
+        return true;
+      } catch (err) {
+        if (err.code === 'auth/too-many-requests') {
+          throw new Error('Verification email was already sent recently. Please check your inbox (and spam folder) or wait a few minutes before resending.');
+        }
+        throw err;
+      }
     }
     throw new Error('No active user session to send verification email.');
   };

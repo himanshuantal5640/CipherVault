@@ -38,8 +38,8 @@ export default function VerifyEmailPage() {
     setError('');
     setInfoMsg('');
     try {
-      await resendVerificationEmail();
-      setInfoMsg(`Verification email resent to ${email}. Please check your inbox.`);
+      await resendVerificationEmail(email, password);
+      setInfoMsg(`Verification email sent to ${email}. Please check your inbox (and spam folder).`);
     } catch (err) {
       setError(err.message || 'Failed to resend verification link.');
     } finally {
