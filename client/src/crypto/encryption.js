@@ -1,30 +1,53 @@
 /**
- * VaultX Client-Side AES-256-GCM Encryption Module (Phase 1 Placeholder)
- * 
- * IMPORTANT ARCHITECTURAL NOTE:
- * Actual Web Crypto API AES-256-GCM encryption and chunk processing
- * will be implemented in Phase 2.
+ * VaultX AES-256-GCM File Data Encryption Module
+ * Authenticated encryption and decryption for file ArrayBuffer contents.
  */
 
 /**
- * Encrypt a file buffer using client-side AES-256-GCM
- * @param {ArrayBuffer} fileBuffer Plaintext file bytes
- * @param {CryptoKey} key Per-file symmetric AES key
- * @returns {Promise<{ ciphertext: ArrayBuffer, iv: Uint8Array, tag: Uint8Array }>}
+ * Encrypt raw file buffer using AES-256-GCM and per-file DEK
+ * @param {ArrayBuffer} fileBuffer Plaintext file byte buffer
+ * @param {CryptoKey} dek Per-file Data Encryption Key
+ * @param {Uint8Array} fileIv 96-bit Initialization Vector
+ * @returns {Promise<ArrayBuffer>} Encrypted ciphertext with appended GCM auth tag
  */
-export async function encryptFileBuffer(fileBuffer, key) {
-  console.warn('[VaultX Crypto] encryptFileBuffer called — encryption is a Phase 2 target feature.');
-  throw new Error('Client-side AES-256-GCM encryption will be enabled in Phase 2.');
+export async function encryptFileData(fileBuffer, dek, fileIv) {
+  if (!fileBuffer || !dek || !fileIv) {
+    throw new Error('File buffer, DEK, and fileIv are required for encryption.');
+  }
+
+  return await window.crypto.subtle.encrypt(
+    {
+      name: 'AES-GCM',
+      iv: fileIv
+    },
+    dek,
+    fileBuffer
+  );
 }
 
 /**
- * Decrypt a ciphertext buffer using client-side AES-256-GCM
- * @param {ArrayBuffer} ciphertext Encrypted bytes
- * @param {CryptoKey} key Per-file symmetric AES key
- * @param {Uint8Array} iv Initialization vector
- * @returns {Promise<ArrayBuffer>} Plaintext file buffer
+ * Decrypt ciphertext buffer using AES-256-GCM and per-file DEK
+ * @param {ArrayBuffer} ciphertext Encrypted byte buffer
+ * @param {CryptoKey} dek Per-file Data Encryption Key
+ * @param {Uint8Array} fileIv 96-bit Initialization Vector
+ * @returns {Promise<ArrayBuffer>} Plaintext file byte buffer
  */
-export async function decryptFileBuffer(ciphertext, key, iv) {
-  console.warn('[VaultX Crypto] decryptFileBuffer called — decryption is a Phase 2 target feature.');
-  throw new Error('Client-side AES-256-GCM decryption will be enabled in Phase 2.');
+export async function decryptFileData(ciphertext, dek, fileIv) {
+  if (!ciphertext || !dek || !fileIv) {
+    throw new Error('Ciphertext, DEK, and fileIv are required for decryption.');
+  }
+
+  try {
+    return await window.crypto.subtle.decrypt(
+      {
+        name: 'AES-GCM',
+        iv: fileIv
+      },
+      dek,
+      ciphertext
+    );
+  } catch (error) {
+    // WebCrypto throws OperationError on GCM tag mismatches or invalid keys
+    throw new Error('Integrity verification failed (AES-GCM authentication mismatch).');
+  }
 }
