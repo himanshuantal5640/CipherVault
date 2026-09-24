@@ -1,49 +1,92 @@
 import api from './api';
 
 /**
- * File Vault Service (Phase 1 Placeholder)
- * Encrypted blob upload/download logic via S3 presigned URLs will be implemented in Phase 4.
+ * File Vault Service
+ * Handles S3 presigned URL retrieval, direct browser S3 transfer, and MongoDB metadata storage
  */
 export const fileService = {
   /**
-   * Fetch encrypted file metadata list
+   * Request presigned PUT URL from backend
    */
-  listFiles: async () => {
-    console.warn('[VaultX] File Service: listFiles is returning mock data in Phase 1.');
-    return [
-      {
-        id: 'file-001',
-        filename: 'financial_audit_2026.pdf.enc',
-        size: '2.4 MB',
-        uploadedAt: '2026-09-20T10:30:00Z',
-        algorithm: 'AES-256-GCM',
-        status: 'ENCRYPTED_AT_REST'
-      },
-      {
-        id: 'file-002',
-        filename: 'passport_scan.png.enc',
-        size: '1.1 MB',
-        uploadedAt: '2026-09-22T14:15:00Z',
-        algorithm: 'AES-256-GCM',
-        status: 'ENCRYPTED_AT_REST'
+  getUploadUrl: async (fileName, fileSize, mimeType) => {
+    return await api.post('/files/upload-url', { fileName, fileSize, mimeType });
+  },
+
+  /**
+   * Transfer ciphertext directly to S3 via presigned PUT URL
+   * Browser -> S3 (Zero Node.js backend involvement)
+   */
+  uploadCiphertextToS3: async (uploadUrl, ciphertextBuffer, mimeType) => {
+    try {
+      const response = await fetch(uploadUrl, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': mimeType || 'application/octet-stream'
+        },
+        body: ciphertextBuffer
+      });
+
+      if (!response.ok) {
+        throw new Error(`S3 direct upload failed with HTTP status ${response.status}`);
       }
-    ];
+      return true;
+    } catch (err) {
+      if (err.name === 'TypeError' || err.message.includes('fetch') || err.message.includes('CORS')) {
+        throw new Error(
+          `AWS S3 CORS Error: Direct upload to S3 was blocked by browser CORS policy. Please configure CORS permissions on your S3 bucket in AWS Console.`
+        );
+      }
+      throw err;
+    }
   },
 
   /**
-   * Request upload authorization placeholder
+   * Store encrypted metadata package in MongoDB after S3 upload
    */
-  getPresignedUploadUrl: async (filename, mimeType) => {
-    console.warn('[VaultX] File Service: AWS S3 presigned URL is a placeholder in Phase 1.');
-    throw new Error('S3 upload features will be enabled in Phase 4.');
+  saveFileMetadata: async (metadataPackage) => {
+    return await api.post('/files', metadataPackage);
   },
 
   /**
-   * Delete file metadata placeholder
+   * Fetch authenticated user's file list from MongoDB
+   */
+  getFiles: async () => {
+    const res = await api.get('/files');
+    return res.files || [];
+  },
+
+  /**
+   * Request presigned GET URL and metadata from backend
+   */
+  getDownloadUrl: async (fileId) => {
+    return await api.get(`/files/${fileId}/download-url`);
+  },
+
+  /**
+   * Fetch encrypted ciphertext directly from S3 via presigned GET URL
+   */
+  downloadCiphertextFromS3: async (downloadUrl) => {
+    try {
+      const response = await fetch(downloadUrl);
+      if (!response.ok) {
+        throw new Error(`S3 direct download failed with HTTP status ${response.status}`);
+      }
+      return await response.arrayBuffer();
+    } catch (err) {
+      if (err.name === 'TypeError' || err.message.includes('fetch') || err.message.includes('CORS')) {
+        throw new Error(
+          `AWS S3 CORS Error: Direct download from S3 was blocked by browser CORS policy. Please configure CORS permissions on your S3 bucket in AWS Console.`
+        );
+      }
+      throw err;
+    }
+  },
+
+  /**
+   * Delete file object from S3 and metadata from MongoDB
    */
   deleteFile: async (fileId) => {
-    console.warn('[VaultX] File Service: deleteFile is a placeholder in Phase 1.');
-    return { success: true, message: `File ${fileId} removed.` };
+    return await api.delete(`/files/${fileId}`);
   }
 };
 

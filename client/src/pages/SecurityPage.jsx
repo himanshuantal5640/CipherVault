@@ -8,7 +8,8 @@ import {
   Layers, 
   EyeOff,
   AlertTriangle,
-  FileCode
+  FileCode,
+  Cloud
 } from 'lucide-react';
 import CryptoTestSuite from '../components/CryptoTestSuite';
 
@@ -20,7 +21,7 @@ export default function SecurityPage() {
     { label: "Key Derivation Function", status: "ACTIVE", value: "PBKDF2-SHA-256 (100,000 iterations)", active: true },
     { label: "Authenticated Integrity", status: "ACTIVE", value: "AES-GCM Tag Verification", active: true },
     { label: "Server Plaintext Exposure", status: "DISABLED", value: "NO (Zero-Trust Guarantee)", active: true },
-    { label: "Cloud S3 Storage", status: "FUTURE", value: "Phase 4 Presigned URL Router", active: false }
+    { label: "Cloud S3 Storage", status: "ACTIVE", value: "Direct Browser Presigned URLs", active: true }
   ];
 
   return (
@@ -32,10 +33,10 @@ export default function SecurityPage() {
           <Cpu className="w-8 h-8" />
         </div>
         <h1 className="text-3xl sm:text-5xl font-extrabold text-white tracking-tight">
-          VaultX Cryptographic Architecture
+          VaultX Security Architecture
         </h1>
         <p className="mt-4 text-slate-300 text-base leading-relaxed">
-          Verifiable browser Web Crypto API implementation powered by PBKDF2-SHA-256 key derivation and per-file AES-256-GCM authenticated encryption.
+          Verifiable browser Web Crypto API implementation powered by PBKDF2-SHA-256 key derivation, per-file AES-256-GCM encryption, and direct AWS S3 presigned URL transfers.
         </p>
       </div>
 
@@ -44,7 +45,7 @@ export default function SecurityPage() {
         <div className="flex items-center gap-2 mb-6 pb-4 border-b border-slate-800">
           <Shield className="w-5 h-5 text-vault-cyan" />
           <h2 className="text-lg font-bold text-white font-mono uppercase tracking-wider">
-            Phase 3 Cryptographic Capabilities Matrix
+            Phase 4 Cryptographic & Cloud Capabilities Matrix
           </h2>
         </div>
 
@@ -73,28 +74,25 @@ export default function SecurityPage() {
       {/* Embedded Automated Verification Suite */}
       <CryptoTestSuite />
 
-      {/* Key Hierarchy Diagram */}
+      {/* Key Hierarchy & Cloud Transfer Diagram */}
       <div className="glass-card p-8 rounded-2xl border border-vault-border space-y-6">
         <div className="flex items-center gap-2 pb-4 border-b border-slate-800">
-          <Key className="w-5 h-5 text-vault-cyan" />
+          <Cloud className="w-5 h-5 text-vault-cyan" />
           <h2 className="text-lg font-bold text-white font-mono uppercase tracking-wider">
-            Two-Level Key Hierarchy & Wrapping Flow
+            End-to-End Zero-Trust Cloud Transfer Architecture
           </h2>
         </div>
 
         <div className="p-6 rounded-xl bg-vault-bg border border-slate-800 font-mono text-xs text-slate-300 overflow-x-auto space-y-3">
-          <div className="text-vault-cyan font-bold">USER MASTER SECRET</div>
-          <div className="pl-4 text-slate-500">↓ (PBKDF2-SHA-256 with 100,000 iterations + 128-bit Salt)</div>
-          <div className="text-vault-emerald font-bold">KEY ENCRYPTION KEY (KEK) [AES-256-GCM]</div>
-          <div className="pl-4 text-slate-500">↓ (wraps raw DEK bytes using dedicated 96-bit wrapIV)</div>
-          <div className="text-vault-indigo font-bold">FILE DATA ENCRYPTION KEY (DEK) [AES-256-GCM 256-bit]</div>
-          <div className="pl-4 text-slate-500">↓ (encrypts raw file bytes using dedicated 96-bit fileIV)</div>
-          <div className="text-vault-violet font-bold">ENCRYPTED FILE CIPHERTEXT</div>
+          <div className="text-vault-cyan font-bold">1. REACT BROWSER (CLIENT-SIDE ENCRYPTION)</div>
+          <div className="pl-4 text-slate-500">↓ Encrypts raw bytes with AES-256-GCM + PBKDF2 in memory</div>
+          <div className="text-vault-emerald font-bold">2. POST /api/files/upload-url</div>
+          <div className="pl-4 text-slate-500">↓ Node.js validates auth, validates s3Key namespace: users/{req.user.id}/</div>
+          <div className="text-vault-indigo font-bold">3. AWS S3 PRESIGNED PUT URL</div>
+          <div className="pl-4 text-slate-500">↓ Browser transfers ciphertext DIRECTLY to AWS S3 (Zero Node.js file bytes)</div>
+          <div className="text-vault-violet font-bold">4. MONGODB FILE METADATA RECORD</div>
+          <div className="pl-4 text-slate-500">↓ Express saves encrypted metadata (s3Key, DEK envelope, IVs, Salt)</div>
         </div>
-
-        <p className="text-xs text-slate-400">
-          The Data Encryption Key (DEK) is generated uniquely per file using cryptographically secure random numbers (<code className="text-vault-cyan">crypto.getRandomValues()</code>).
-        </p>
       </div>
 
     </div>
