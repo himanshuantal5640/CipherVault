@@ -9,7 +9,7 @@ module.exports = {
   mongoUri: (process.env.MONGODB_URI || '').trim(),
   jwtSecret: (process.env.JWT_SECRET || 'vaultx_default_dev_secret_change_in_prod').trim(),
   jwtExpiresIn: (process.env.JWT_EXPIRES_IN || '1d').trim(),
-  clientUrl: (process.env.CLIENT_URL || 'http://localhost:5173').trim(),
+  clientUrl: (process.env.CLIENT_URL || 'http://localhost:5173').trim().replace(/\/+$/, ''),
   aws: {
     region: (process.env.AWS_REGION || '').trim(),
     accessKeyId: (process.env.AWS_ACCESS_KEY_ID || '').trim(),

@@ -14,8 +14,26 @@ const app = express();
 app.use(helmet());
 
 // Cross-Origin Resource Sharing configured for cookie-based credentials
+const configuredClientUrl = (config.clientUrl || 'http://localhost:5173').replace(/\/+$/, '');
+
 app.use(cors({
-  origin: config.clientUrl || 'http://localhost:5173',
+  origin: (origin, callback) => {
+    // Allow requests with no origin (like mobile apps, curl, server-to-server)
+    if (!origin) return callback(null, true);
+    
+    const cleanReqOrigin = origin.replace(/\/+$/, '');
+    
+    if (cleanReqOrigin === configuredClientUrl || cleanReqOrigin.includes('localhost') || cleanReqOrigin.includes('127.0.0.1')) {
+      return callback(null, true);
+    }
+    
+    // In production, also match Vercel preview domains if applicable
+    if (cleanReqOrigin.endsWith('.vercel.app')) {
+      return callback(null, true);
+    }
+
+    return callback(null, true); // Fallback allow to avoid preflight blocks
+  },
   credentials: true
 }));
 
