@@ -1,44 +1,40 @@
 import api from './api';
 
 /**
- * Authentication Service (Phase 1 Placeholder)
- * Full JWT authentication and session management will be wired up in Phase 3.
+ * Authentication Service
+ * Communicates with VaultX Express API using HTTP-only cookies
  */
 export const authService = {
   /**
-   * User login placeholder
+   * Register new user account
+   */
+  register: async (email, password) => {
+    return await api.post('/auth/register', { email, password });
+  },
+
+  /**
+   * User login
    */
   login: async (email, password) => {
-    console.warn('[VaultX] Auth Service: login is a placeholder in Phase 1.');
-    return {
-      success: true,
-      message: 'Phase 1 auth mock successful',
-      user: { email, role: 'User' }
-    };
+    return await api.post('/auth/login', { email, password });
   },
 
   /**
-   * User registration placeholder
+   * User logout (clears HTTP-only vaultx_token cookie)
    */
-  register: async (username, email, password) => {
-    console.warn('[VaultX] Auth Service: register is a placeholder in Phase 1.');
-    return {
-      success: true,
-      message: 'Phase 1 registration mock successful',
-      user: { username, email }
-    };
+  logout: async () => {
+    return await api.post('/auth/logout');
   },
 
   /**
-   * Logout user session
+   * Fetch current authenticated user session
    */
-  logout: () => {
-    localStorage.removeItem('vaultx_token');
-    console.log('[VaultX] User logged out.');
+  getCurrentUser: async () => {
+    return await api.get('/auth/me');
   },
 
   /**
-   * Get server health status
+   * Check API health status
    */
   checkHealth: async () => {
     return await api.get('/health');

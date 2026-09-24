@@ -4,39 +4,82 @@ import { authService } from '../services/authService';
 const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState({
-    username: 'Demo Security Analyst',
-    email: 'secops@vaultx.io',
-    isAuthenticated: false
-  });
-  const [loading, setLoading] = useState(false);
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  const login = async (email, password) => {
-    setLoading(true);
+  // Check initial authentication state on mount via GET /api/auth/me
+  const refreshUser = async () => {
     try {
-      const res = await authService.login(email, password);
-      setUser({
-        username: email.split('@')[0],
-        email: email,
-        isAuthenticated: true
-      });
-      return res;
+      const response = await authService.getCurrentUser();
+      if (response && response.success && response.user) {
+        setUser(response.user);
+      } else {
+        setUser(null);
+      }
+    } catch (error) {
+      setUser(null);
     } finally {
       setLoading(false);
     }
   };
 
-  const logout = () => {
-    authService.logout();
-    setUser({
-      username: '',
-      email: '',
-      isAuthenticated: false
-    });
+  useEffect(() => {
+    refreshUser();
+  }, []);
+
+  const login = async (email, password) => {
+    setLoading(true);
+    try {
+      const response = await authService.login(email, password);
+      if (response && response.success && response.user) {
+        setUser(response.user);
+      }
+      return response;
+    } finally {
+      setLoading(false);
+    }
   };
 
+  const register = async (email, password) => {
+    setLoading(true);
+    try {
+      const response = await authService.register(email, password);
+      if (response && response.success && response.user) {
+        setUser(response.user);
+      }
+      return response;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const logout = async () => {
+    setLoading(true);
+    try {
+      await authService.logout();
+    } catch (error) {
+      console.warn('[VaultX Auth] Logout call warning:', error.message);
+    } finally {
+      setUser(null);
+      setLoading(false);
+    }
+  };
+
+  const isAuthenticated = !!user;
+
   return (
-    <AuthContext.Provider value={{ user, setUser, login, logout, loading }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        setUser,
+        loading,
+        isAuthenticated,
+        login,
+        register,
+        logout,
+        refreshUser
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

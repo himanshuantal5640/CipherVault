@@ -1,27 +1,34 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Shield, Lock, Mail, Key, ArrowRight, AlertCircle } from 'lucide-react';
+import { Shield, Lock, Mail, Key, ArrowRight, AlertCircle, RefreshCw } from 'lucide-react';
 import useAuth from '../hooks/useAuth';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  const { login, loading } = useAuth();
+  const [submitting, setSubmitting] = useState(false);
+
+  const { login } = useAuth();
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!email || !password) {
-      setError('Please enter your credentials.');
+      setError('Please enter both your email and password.');
       return;
     }
+
+    setSubmitting(true);
+    setError('');
+
     try {
-      setError('');
       await login(email, password);
       navigate('/dashboard');
     } catch (err) {
-      setError(err.message || 'Login failed.');
+      setError(err.message || 'Invalid credentials. Please check your email and password.');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -41,7 +48,7 @@ export default function LoginPage() {
               Unlock Secure Vault
             </h1>
             <p className="text-xs text-slate-400 mt-1 font-mono">
-              Phase 1 Placeholder Auth Console
+              HTTP-Only Cookie Authentication Session
             </p>
           </div>
 
@@ -57,7 +64,7 @@ export default function LoginPage() {
             {/* Email Field */}
             <div>
               <label className="block text-xs font-semibold text-slate-300 mb-1 font-mono uppercase tracking-wider">
-                Vault Identity (Email)
+                Vault Email
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-500">
@@ -67,17 +74,17 @@ export default function LoginPage() {
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="analyst@vaultx.io"
+                  placeholder="secops@vaultx.io"
                   className="w-full pl-10 pr-4 py-3 bg-vault-bg border border-slate-700/80 rounded-xl text-slate-100 placeholder-slate-500 text-sm focus:outline-none focus:border-vault-cyan focus:ring-1 focus:ring-vault-cyan transition-all"
                   required
                 />
               </div>
             </div>
 
-            {/* Master Key Passphrase */}
+            {/* Master Password */}
             <div>
               <label className="block text-xs font-semibold text-slate-300 mb-1 font-mono uppercase tracking-wider">
-                Master Secret Passphrase
+                Master Password
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-500">
@@ -96,11 +103,14 @@ export default function LoginPage() {
 
             <button
               type="submit"
-              disabled={loading}
-              className="w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-vault-cyan to-vault-indigo text-slate-950 font-bold text-sm shadow-glow-cyan hover:brightness-110 transition-all flex items-center justify-center gap-2 group"
+              disabled={submitting}
+              className="w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-vault-cyan to-vault-indigo text-slate-950 font-bold text-sm shadow-glow-cyan hover:brightness-110 transition-all flex items-center justify-center gap-2 group disabled:opacity-50"
             >
-              {loading ? (
-                <span>Authenticating Session...</span>
+              {submitting ? (
+                <span className="flex items-center gap-2">
+                  <RefreshCw className="w-4 h-4 animate-spin" />
+                  Authenticating...
+                </span>
               ) : (
                 <>
                   <span>Enter Vault Console</span>
@@ -111,7 +121,7 @@ export default function LoginPage() {
           </form>
 
           <div className="mt-6 text-center text-xs text-slate-400">
-            Don't have a vault key?{' '}
+            Don't have a vault profile?{' '}
             <Link to="/register" className="text-vault-cyan hover:underline font-semibold">
               Generate New Vault
             </Link>
@@ -119,7 +129,7 @@ export default function LoginPage() {
 
           <div className="mt-6 pt-4 border-t border-slate-800 text-center">
             <span className="text-[10px] text-slate-500 font-mono">
-              Notice: Passphrases are never transmitted unhashed in Phase 3+.
+              Tokens stored exclusively in secure HTTP-only cookies.
             </span>
           </div>
 
