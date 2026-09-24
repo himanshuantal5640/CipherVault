@@ -4,6 +4,7 @@ const mongoose = require('mongoose');
 const config = require('../config');
 const User = require('../models/User');
 const { registerSchema, loginSchema } = require('../utils/validation');
+const { logAuditEvent } = require('../services/auditService');
 
 // In-memory user fallback storage when MongoDB Atlas is disconnected/unconfigured
 const inMemoryUsers = new Map();
@@ -77,6 +78,15 @@ const register = async (req, res, next) => {
     // Set HTTP-only Cookie
     res.cookie('vaultx_token', token, getCookieOptions());
 
+    // Log successful registration / login event
+    await logAuditEvent({
+      userId: userObj.id,
+      action: 'LOGIN_SUCCESS',
+      status: 'SUCCESS',
+      req,
+      details: { email: userObj.email, event: 'New user registration' }
+    });
+
     // Return safe user response
     return res.status(201).json({
       success: true,
@@ -118,6 +128,13 @@ const login = async (req, res, next) => {
     }
 
     if (!userRecord) {
+      await logAuditEvent({
+        userId: null,
+        action: 'LOGIN_FAILED',
+        status: 'FAILED',
+        req,
+        details: { email, reason: 'Invalid email address' }
+      });
       return res.status(401).json({
         success: false,
         message: 'Invalid email or password'
@@ -127,6 +144,13 @@ const login = async (req, res, next) => {
     // Compare password with stored hash using bcrypt
     const isPasswordValid = await bcrypt.compare(password, userRecord.passwordHash);
     if (!isPasswordValid) {
+      await logAuditEvent({
+        userId: userRecord.id,
+        action: 'LOGIN_FAILED',
+        status: 'FAILED',
+        req,
+        details: { email, reason: 'Incorrect password' }
+      });
       return res.status(401).json({
         success: false,
         message: 'Invalid email or password'
@@ -142,6 +166,14 @@ const login = async (req, res, next) => {
 
     // Store JWT in an HTTP-only cookie
     res.cookie('vaultx_token', token, getCookieOptions());
+
+    await logAuditEvent({
+      userId: userRecord.id,
+      action: 'LOGIN_SUCCESS',
+      status: 'SUCCESS',
+      req,
+      details: { email: userRecord.email }
+    });
 
     return res.status(200).json({
       success: true,

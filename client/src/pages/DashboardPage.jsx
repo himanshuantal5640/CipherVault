@@ -15,6 +15,7 @@ import UploadProgress from '../components/vault/UploadProgress';
 import FileGrid from '../components/vault/FileGrid';
 import FileList from '../components/vault/FileList';
 import EmptyVault from '../components/vault/EmptyVault';
+import NoSearchResults from '../components/vault/NoSearchResults';
 import DeleteFileModal from '../components/vault/DeleteFileModal';
 import MetadataModal from '../components/vault/MetadataModal';
 import cryptoService from '../services/cryptoService';
@@ -45,7 +46,7 @@ export default function DashboardPage() {
     try {
       setLoadingFiles(true);
       const files = await fileService.getFiles();
-      setVaultFiles(files);
+      setVaultFiles(files || []);
     } catch (err) {
       console.error('[VaultX] Error fetching files:', err);
     } finally {
@@ -57,13 +58,22 @@ export default function DashboardPage() {
     loadVaultFiles();
   }, []);
 
-  // Client-side search filtering over authorized file list
+  // Robust client-side search filtering over authorized file list (originalName, filename, mimeType & s3Key)
   const filteredFiles = useMemo(() => {
-    if (!searchQuery.trim()) return vaultFiles;
-    const query = searchQuery.toLowerCase().trim();
-    return vaultFiles.filter(f => 
-      (f.originalName || '').toLowerCase().includes(query)
-    );
+    const normalizedQuery = searchQuery.trim().toLowerCase();
+    if (!normalizedQuery) return vaultFiles;
+
+    return vaultFiles.filter((file) => {
+      const name = (file.originalName || file.filename || file.name || '').toLowerCase();
+      const mime = (file.mimeType || '').toLowerCase();
+      const s3Key = (file.s3Key || '').toLowerCase();
+
+      return (
+        name.includes(normalizedQuery) ||
+        mime.includes(normalizedQuery) ||
+        s3Key.includes(normalizedQuery)
+      );
+    });
   }, [vaultFiles, searchQuery]);
 
   // Complete Zero-Trust Upload Pipeline
@@ -232,10 +242,14 @@ export default function DashboardPage() {
           <RefreshCw className="w-4 h-4 animate-spin text-vault-cyan" />
           Loading user vault...
         </div>
-      ) : filteredFiles.length === 0 ? (
+      ) : vaultFiles.length === 0 ? (
         <EmptyVault
-          isSearching={!!searchQuery}
           onUploadClick={() => window.scrollTo({ top: 300, behavior: 'smooth' })}
+        />
+      ) : filteredFiles.length === 0 ? (
+        <NoSearchResults
+          searchQuery={searchQuery}
+          onClearSearch={() => setSearchQuery('')}
         />
       ) : viewMode === 'grid' ? (
         <FileGrid

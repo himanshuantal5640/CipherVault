@@ -2,6 +2,7 @@ const crypto = require('crypto');
 const mongoose = require('mongoose');
 const File = require('../models/File');
 const { generatePutPresignedUrl, generateGetPresignedUrl, deleteS3Object } = require('../config/s3');
+const { logAuditEvent } = require('../services/auditService');
 
 // In-memory file storage fallback for local dev when MongoDB Atlas is unconfigured
 const inMemoryFiles = new Map();
@@ -124,6 +125,20 @@ const confirmUpload = async (req, res, next) => {
       inMemoryFiles.set(fileId, savedFile);
     }
 
+    const createdId = savedFile._id || savedFile.id;
+    await logAuditEvent({
+      userId: ownerId,
+      action: 'FILE_UPLOAD',
+      fileId: createdId,
+      status: 'SUCCESS',
+      req,
+      details: {
+        filename: originalName,
+        size,
+        mimeType: mimeType || 'application/octet-stream'
+      }
+    });
+
     return res.status(201).json({
       success: true,
       file: savedFile
@@ -188,6 +203,14 @@ const getDownloadUrl = async (req, res, next) => {
     }
 
     if (!fileRecord) {
+      await logAuditEvent({
+        userId: ownerId,
+        action: 'ACCESS_DENIED',
+        fileId,
+        status: 'BLOCKED',
+        req,
+        details: { reason: 'Unauthorized file download attempt or missing record' }
+      });
       return res.status(404).json({
         success: false,
         message: 'File not found or access denied.'
@@ -196,6 +219,15 @@ const getDownloadUrl = async (req, res, next) => {
 
     // Generate short-lived presigned GET URL
     const downloadUrl = await generateGetPresignedUrl(fileRecord.s3Key);
+
+    await logAuditEvent({
+      userId: ownerId,
+      action: 'FILE_DOWNLOAD',
+      fileId: fileRecord.id || fileRecord._id,
+      status: 'SUCCESS',
+      req,
+      details: { filename: fileRecord.originalName, mimeType: fileRecord.mimeType }
+    });
 
     return res.status(200).json({
       success: true,
@@ -242,11 +274,21 @@ const deleteFile = async (req, res, next) => {
     }
 
     if (!fileRecord) {
+      await logAuditEvent({
+        userId: ownerId,
+        action: 'ACCESS_DENIED',
+        fileId,
+        status: 'BLOCKED',
+        req,
+        details: { reason: 'Unauthorized file deletion attempt or missing record' }
+      });
       return res.status(404).json({
         success: false,
         message: 'File not found or access denied.'
       });
     }
+
+    const deletedFilename = fileRecord.originalName;
 
     // 1. Delete object from AWS S3
     await deleteS3Object(fileRecord.s3Key);
@@ -257,6 +299,15 @@ const deleteFile = async (req, res, next) => {
     } else {
       inMemoryFiles.delete(fileId);
     }
+
+    await logAuditEvent({
+      userId: ownerId,
+      action: 'FILE_DELETE',
+      fileId,
+      status: 'SUCCESS',
+      req,
+      details: { filename: deletedFilename }
+    });
 
     return res.status(200).json({
       success: true,
