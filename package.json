@@ -1,0 +1,21 @@
+{
+  "name": "vaultx-monorepo",
+  "version": "1.0.0",
+  "description": "VaultX - Zero-Trust Secure File Vault Monorepo Foundation",
+  "private": true,
+  "scripts": {
+    "install:all": "npm install --prefix server && npm install --prefix client",
+    "server": "npm run dev --prefix server",
+    "client": "npm run dev --prefix client",
+    "dev": "npm run server"
+  },
+  "keywords": [
+    "zero-trust",
+    "security",
+    "encryption",
+    "vaultx",
+    "aes-256-gcm"
+  ],
+  "author": "",
+  "license": "ISC"
+}
